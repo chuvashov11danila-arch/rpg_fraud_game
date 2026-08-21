@@ -1,7 +1,19 @@
 import psycopg2
 import streamlit as st
 import os
+from dotenv import load_dotenv
 from PIL import Image, ImageOps
+
+# Загружаем переменные из .env
+load_dotenv()
+
+# ========== ОТЛАДКА (ПОКАЖЕТ, ЧТО ЧИТАЕТСЯ ИЗ .ENV) ==========
+st.write("🔍 Проверка переменных из .env:")
+st.write("DB_HOST =", os.getenv('DB_HOST'))
+st.write("DB_PORT =", os.getenv('DB_PORT'))
+st.write("DB_USER =", os.getenv('DB_USER'))
+st.write("DB_PASSWORD =", os.getenv('DB_PASSWORD'))
+st.write("DB_DATABASE =", os.getenv('DB_DATABASE'))
 
 # ========== ФУНКЦИЯ ПОИСКА ФАЙЛА ==========
 def find_image_file(path):
@@ -33,15 +45,15 @@ def scroll_to_top():
     </script>
     """, unsafe_allow_html=True)
 
-# ========== ПОДКЛЮЧЕНИЕ К БД (ПРЯМОЙ ПАРОЛЬ) ==========
+# ========== ПОДКЛЮЧЕНИЕ К БД (ЧЕРЕЗ .env) ==========
 def get_db_connection():
     try:
         return psycopg2.connect(
-            host="txrqxzehfwfcsltzokeu.supabase.co",
-            port="5432",
-            user="postgres",
-            password="13021985postgres",
-            database="postgres"
+            host=os.getenv('DB_HOST'),
+            port=os.getenv('DB_PORT'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD'),
+            database=os.getenv('DB_DATABASE')
         )
     except Exception as e:
         st.error(f"❌ Ошибка подключения к БД: {e}")
