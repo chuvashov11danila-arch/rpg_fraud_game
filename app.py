@@ -3,12 +3,15 @@ import streamlit as st
 import os
 from PIL import Image, ImageOps
 
-# ========== ОТЛАДКА: ПРОВЕРКА ПЕРЕМЕННЫХ (ПОТОМ УДАЛИ) ==========
-st.write("DB_HOST =", os.getenv('DB_HOST'))
-st.write("DB_PORT =", os.getenv('DB_PORT'))
-st.write("DB_USER =", os.getenv('DB_USER'))
-st.write("DB_PASSWORD =", os.getenv('DB_PASSWORD'))
-st.write("DB_DATABASE =", os.getenv('DB_DATABASE'))
+# ========== ОТЛАДКА: ПОКАЗЫВАЕМ, ЧТО ЧИТАЕТСЯ ИЗ SECRETS ==========
+st.write("🔍 Проверка secrets:")
+try:
+    st.write("DB_HOST =", st.secrets.get('DB_HOST', 'Не найден'))
+    st.write("DB_USER =", st.secrets.get('DB_USER', 'Не найден'))
+    # Если не работает, пробуем формат connections.postgresql
+    st.write("DB_HOST (connections) =", st.secrets.get('connections', {}).get('postgresql', {}).get('host', 'Не найден'))
+except Exception as e:
+    st.error(f"Ошибка чтения secrets: {e}")
 
 # ========== ФУНКЦИЯ ПОИСКА ФАЙЛА ==========
 def find_image_file(path):
@@ -40,15 +43,34 @@ def scroll_to_top():
     </script>
     """, unsafe_allow_html=True)
 
-# ========== ПОДКЛЮЧЕНИЕ К БД (через os.getenv) ==========
+# ========== ПОДКЛЮЧЕНИЕ К БД (ЧЕРЕЗ st.secrets) ==========
 def get_db_connection():
     try:
+        # Пробуем простые переменные
+        host = st.secrets.get('DB_HOST')
+        port = st.secrets.get('DB_PORT')
+        user = st.secrets.get('DB_USER')
+        password = st.secrets.get('DB_PASSWORD')
+        database = st.secrets.get('DB_DATABASE')
+        
+        # Если не нашли, пробуем формат connections.postgresql
+        if host is None:
+            host = st.secrets.get('connections', {}).get('postgresql', {}).get('host')
+            port = st.secrets.get('connections', {}).get('postgresql', {}).get('port')
+            user = st.secrets.get('connections', {}).get('postgresql', {}).get('username')
+            password = st.secrets.get('connections', {}).get('postgresql', {}).get('password')
+            database = st.secrets.get('connections', {}).get('postgresql', {}).get('database')
+        
+        if host is None:
+            st.error("❌ Не найдены настройки базы данных в secrets!")
+            st.stop()
+        
         return psycopg2.connect(
-            port=os.getenv('DB_PORT'),
-            host=os.getenv('DB_HOST'),
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
-            database=os.getenv('DB_DATABASE')
+            port=port,
+            host=host,
+            user=user,
+            password=password,
+            database=database
         )
     except Exception as e:
         st.error(f"❌ Ошибка подключения к БД: {e}")
