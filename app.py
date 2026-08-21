@@ -33,15 +33,15 @@ def scroll_to_top():
     </script>
     """, unsafe_allow_html=True)
 
-# ========== ПОДКЛЮЧЕНИЕ К БД (ЧЕРЕЗ st.secrets) ==========
+# ========== ПОДКЛЮЧЕНИЕ К БД (ПРЯМОЙ ПАРОЛЬ) ==========
 def get_db_connection():
     try:
         return psycopg2.connect(
-            host=st.secrets["connections"]["postgresql"]["host"],
-            port=st.secrets["connections"]["postgresql"]["port"],
-            user=st.secrets["connections"]["postgresql"]["username"],
-            password=st.secrets["connections"]["postgresql"]["password"],
-            database=st.secrets["connections"]["postgresql"]["database"]
+            host="txrqxzehfwfcsltzokeu.supabase.co",
+            port="5432",
+            user="postgres",
+            password="13021985postgres",
+            database="postgres"
         )
     except Exception as e:
         st.error(f"❌ Ошибка подключения к БД: {e}")
