@@ -3,16 +3,6 @@ import streamlit as st
 import os
 from PIL import Image, ImageOps
 
-# ========== ОТЛАДКА: ПОКАЗЫВАЕМ, ЧТО ЧИТАЕТСЯ ИЗ SECRETS ==========
-st.write("🔍 Проверка secrets:")
-try:
-    st.write("DB_HOST =", st.secrets.get('DB_HOST', 'Не найден'))
-    st.write("DB_USER =", st.secrets.get('DB_USER', 'Не найден'))
-    # Если не работает, пробуем формат connections.postgresql
-    st.write("DB_HOST (connections) =", st.secrets.get('connections', {}).get('postgresql', {}).get('host', 'Не найден'))
-except Exception as e:
-    st.error(f"Ошибка чтения secrets: {e}")
-
 # ========== ФУНКЦИЯ ПОИСКА ФАЙЛА ==========
 def find_image_file(path):
     if not path:
@@ -46,31 +36,12 @@ def scroll_to_top():
 # ========== ПОДКЛЮЧЕНИЕ К БД (ЧЕРЕЗ st.secrets) ==========
 def get_db_connection():
     try:
-        # Пробуем простые переменные
-        host = st.secrets.get('DB_HOST')
-        port = st.secrets.get('DB_PORT')
-        user = st.secrets.get('DB_USER')
-        password = st.secrets.get('DB_PASSWORD')
-        database = st.secrets.get('DB_DATABASE')
-        
-        # Если не нашли, пробуем формат connections.postgresql
-        if host is None:
-            host = st.secrets.get('connections', {}).get('postgresql', {}).get('host')
-            port = st.secrets.get('connections', {}).get('postgresql', {}).get('port')
-            user = st.secrets.get('connections', {}).get('postgresql', {}).get('username')
-            password = st.secrets.get('connections', {}).get('postgresql', {}).get('password')
-            database = st.secrets.get('connections', {}).get('postgresql', {}).get('database')
-        
-        if host is None:
-            st.error("❌ Не найдены настройки базы данных в secrets!")
-            st.stop()
-        
         return psycopg2.connect(
-            port=port,
-            host=host,
-            user=user,
-            password=password,
-            database=database
+            host=st.secrets["connections"]["postgresql"]["host"],
+            port=st.secrets["connections"]["postgresql"]["port"],
+            user=st.secrets["connections"]["postgresql"]["username"],
+            password=st.secrets["connections"]["postgresql"]["password"],
+            database=st.secrets["connections"]["postgresql"]["database"]
         )
     except Exception as e:
         st.error(f"❌ Ошибка подключения к БД: {e}")
