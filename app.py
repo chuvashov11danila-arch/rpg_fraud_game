@@ -178,11 +178,21 @@ if not st.session_state.started:
             conn = get_db_connection()
             if conn:
                 cursor = conn.cursor()
+                # ========== ОТЛАДКА ЗАГРУЗКИ КЕЙСОВ ==========
                 try:
-                    # Проверка количества кейсов
-                    cursor.execute('SELECT COUNT(*) FROM public.quests;')
-                    count = cursor.fetchone()[0]
-                    st.write(f"🔍 Найдено кейсов в БД: {count}")
+                    st.write("🔍 Подключение к БД успешно! Загружаю кейсы...")
+                    
+                    # Проверка структуры таблицы
+                    cursor.execute("""
+                        SELECT column_name, data_type 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'quests' AND table_schema = 'public'
+                        ORDER BY ordinal_position;
+                    """)
+                    columns = cursor.fetchall()
+                    st.write("🔍 Колонки в таблице quests:")
+                    for col in columns:
+                        st.write(f"  - {col[0]} ({col[1]})")
                     
                     # Основной запрос
                     cursor.execute('''
@@ -190,19 +200,24 @@ if not st.session_state.started:
                         FROM public.quests 
                         ORDER BY quest_id
                     ''')
-                    st.session_state.cases = cursor.fetchall()
-                    st.write(f"🔍 Получено строк: {len(st.session_state.cases)}")
+                    rows = cursor.fetchall()
+                    st.write(f"🔍 Найдено кейсов: {len(rows)}")
                     
-                    # Показываем первые 5 кейсов для проверки
-                    if st.session_state.cases:
-                        st.write("🔍 Первые 5 кейсов:")
-                        for row in st.session_state.cases[:5]:
-                            st.write(row)
+                    if rows:
+                        st.write("🔍 Первый кейс:", rows[0])
+                        st.session_state.cases = rows
+                    else:
+                        st.warning("⚠️ Таблица quests пуста! Добавьте данные.")
                 except Exception as e:
-                    st.error(f"Ошибка при загрузке кейсов: {e}")
+                    st.error(f"❌ Ошибка при загрузке кейсов: {e}")
+                    import traceback
+                    st.error(traceback.format_exc())
                 finally:
                     cursor.close()
                     conn.close()
+            else:
+                st.error("❌ Не удалось подключиться к БД")
+            
             scroll_to_top()
             st.rerun()
         else:
