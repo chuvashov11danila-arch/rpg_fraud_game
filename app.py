@@ -45,7 +45,7 @@ def scroll_to_top():
     </script>
     """, unsafe_allow_html=True)
 
-# ========== ПОДКЛЮЧЕНИЕ К БД (ЧЕРЕЗ .env) ==========
+# ========== ПОДКЛЮЧЕНИЕ К БД ==========
 def get_db_connection():
     try:
         return psycopg2.connect(
@@ -178,14 +178,31 @@ if not st.session_state.started:
             conn = get_db_connection()
             if conn:
                 cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT quest_id, descriptions, case_image, meme_path, correct_action 
-                    FROM public.quests 
-                    ORDER BY RANDOM()
-                ''')
-                st.session_state.cases = cursor.fetchall()
-                cursor.close()
-                conn.close()
+                try:
+                    # Проверка количества кейсов
+                    cursor.execute('SELECT COUNT(*) FROM public.quests;')
+                    count = cursor.fetchone()[0]
+                    st.write(f"🔍 Найдено кейсов в БД: {count}")
+                    
+                    # Основной запрос
+                    cursor.execute('''
+                        SELECT quest_id, descriptions, case_image, meme_path, correct_action 
+                        FROM public.quests 
+                        ORDER BY quest_id
+                    ''')
+                    st.session_state.cases = cursor.fetchall()
+                    st.write(f"🔍 Получено строк: {len(st.session_state.cases)}")
+                    
+                    # Показываем первые 5 кейсов для проверки
+                    if st.session_state.cases:
+                        st.write("🔍 Первые 5 кейсов:")
+                        for row in st.session_state.cases[:5]:
+                            st.write(row)
+                except Exception as e:
+                    st.error(f"Ошибка при загрузке кейсов: {e}")
+                finally:
+                    cursor.close()
+                    conn.close()
             scroll_to_top()
             st.rerun()
         else:
