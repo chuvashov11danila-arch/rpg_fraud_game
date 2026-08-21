@@ -87,35 +87,18 @@ if not st.session_state.started:
             
             conn = get_db_connection()
             if conn:
-                st.success("✅ Подключение к БД успешно!")
                 cursor = conn.cursor()
                 try:
-                    # Проверяем, есть ли таблица
-                    cursor.execute("SELECT COUNT(*) FROM public.quests;")
-                    count = cursor.fetchone()[0]
-                    st.write(f"🔍 Количество кейсов в БД: {count}")
-                    
-                    if count > 0:
-                        # Загружаем кейсы
-                        cursor.execute("SELECT quest_id, descriptions, case_image, meme_path, correct_action FROM public.quests ORDER BY quest_id;")
-                        rows = cursor.fetchall()
-                        st.session_state.cases = rows
-                        st.success(f"✅ Загружено {len(rows)} кейсов!")
-                        
-                        # Показываем первый кейс для проверки
-                        if rows:
-                            st.write("🔍 Первый кейс:", rows[0])
-                    else:
-                        st.warning("⚠️ Таблица quests пуста! Добавьте данные в Supabase.")
+                    # Исправленный запрос: descriptions вместо description!
+                    cursor.execute("SELECT quest_id, descriptions, case_image, meme_path, correct_action FROM public.quests ORDER BY quest_id;")
+                    rows = cursor.fetchall()
+                    st.session_state.cases = rows
+                    st.success(f"✅ Загружено {len(rows)} кейсов!")
                 except Exception as e:
                     st.error(f"❌ Ошибка загрузки: {e}")
-                    st.error("Проверьте, что в таблице quests есть колонки: quest_id, descriptions, case_image, meme_path, correct_action")
                 finally:
                     cursor.close()
                     conn.close()
-            else:
-                st.error("❌ Не удалось подключиться к БД")
-            
             st.rerun()
         else:
             st.warning("⚠️ Введите ФИО!")
@@ -160,6 +143,7 @@ else:
         st.stop()
 
     case = st.session_state.cases[st.session_state.step]
+    #           ↓↓↓↓↓↓↓↓  ВАЖНО! Здесь тоже descriptions
     quest_id, description, case_image, meme_path, correct_action = case
 
     st.markdown(f"**👤 Агент:** {st.session_state.user_name}")
