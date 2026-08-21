@@ -2,9 +2,6 @@ import streamlit as st
 import psycopg2
 import os
 from PIL import Image, ImageOps
-from dotenv import load_dotenv
-
-load_dotenv()
 
 # ========== НАСТРОЙКА СТРАНИЦЫ ==========
 st.set_page_config(
@@ -13,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ========== ПАРОЛЬ ==========
+# ========== ПАРОЛЬ ДЛЯ ВХОДА В ПРИЛОЖЕНИЕ ==========
 PASSWORD = "охотник2026"
 
 if 'authenticated' not in st.session_state:
@@ -30,18 +27,18 @@ if not st.session_state.authenticated:
             st.error("❌ Неверный пароль!")
     st.stop()
 
-# ========== ПОДКЛЮЧЕНИЕ К БД ==========
+# ========== ПОДКЛЮЧЕНИЕ К БД (ПРЯМОЙ ПАРОЛЬ) ==========
 def get_db_connection():
     try:
         return psycopg2.connect(
-            host=os.getenv("DB_HOST"),
-            port=os.getenv("DB_PORT"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-            database=os.getenv("DB_DATABASE")
+            host="txrqxzehfwfcsltzokeu.supabase.co",
+            port="5432",
+            user="postgres",
+            password="13021985postgres",
+            database="postgres"
         )
     except Exception as e:
-        st.error(f"Ошибка: {e}")
+        st.error(f"❌ Ошибка подключения к БД: {e}")
         return None
 
 # ========== ПОИСК ФАЙЛОВ ==========
