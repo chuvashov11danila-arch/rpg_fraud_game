@@ -1,10 +1,9 @@
 import psycopg2
 import streamlit as st
 import os
-from dotenv import load_dotenv
 from PIL import Image, ImageOps
 
-load_dotenv()
+# load_dotenv() — УДАЛЁН! Теперь читаем из st.secrets
 
 # ========== ФУНКЦИЯ ПОИСКА ФАЙЛА ==========
 def find_image_file(path):
@@ -36,15 +35,15 @@ def scroll_to_top():
     </script>
     """, unsafe_allow_html=True)
 
-# ========== ПОДКЛЮЧЕНИЕ К БД ==========
+# ========== ПОДКЛЮЧЕНИЕ К БД (ЧЕРЕЗ st.secrets) ==========
 def get_db_connection():
     try:
         return psycopg2.connect(
-            port=os.getenv('DB_PORT'),
-            host=os.getenv('DB_HOST'),
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
-            database=os.getenv('DB_DATABASE')
+            port=st.secrets['connections']['postgresql']['port'],
+            host=st.secrets['connections']['postgresql']['host'],
+            user=st.secrets['connections']['postgresql']['username'],
+            password=st.secrets['connections']['postgresql']['password'],
+            database=st.secrets['connections']['postgresql']['database']
         )
     except Exception as e:
         st.error(f"❌ Ошибка подключения к БД: {e}")
@@ -58,12 +57,12 @@ def get_or_create_player(name):
             st.error("❌ Нет подключения к БД")
             return None
         cursor = conn.cursor()
-        cursor.execute('SELECT player_id FROM "rpgcontest".players WHERE full_name = %s', (name,))
+        cursor.execute('SELECT player_id FROM public.players WHERE full_name = %s', (name,))
         row = cursor.fetchone()
         if row:
             player_id = row[0]
         else:
-            cursor.execute('INSERT INTO "rpgcontest".players (full_name) VALUES (%s) RETURNING player_id', (name,))
+            cursor.execute('INSERT INTO public.players (full_name) VALUES (%s) RETURNING player_id', (name,))
             player_id = cursor.fetchone()[0]
             conn.commit()
         cursor.close()
@@ -81,7 +80,7 @@ def save_result(player_id, quest_id, user_action, is_correct):
             return
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO "rpgcontest".game_results (player_id, quest_id, answer, is_correct)
+            INSERT INTO public.game_results (player_id, quest_id, answer, is_correct)
             VALUES (%s, %s, %s, %s)
         ''', (player_id, quest_id, user_action, is_correct))
         conn.commit()
@@ -171,7 +170,7 @@ if not st.session_state.started:
                 cursor = conn.cursor()
                 cursor.execute('''
                     SELECT quest_id, descriptions, case_image, meme_path, correct_action 
-                    FROM "rpgcontest".quests 
+                    FROM public.quests 
                     ORDER BY RANDOM()
                 ''')
                 st.session_state.cases = cursor.fetchall()
@@ -184,6 +183,20 @@ if not st.session_state.started:
 
 # ========== ОСНОВНОЙ ЦИКЛ ИГРЫ ==========
 else:
+    if not st.session_state.cases:
+        st.error("❌ Кейсы не загружены. Проверьте подключение к базе данных.")
+        if st.button("🔄 Перезапустить"):
+            st.session_state.started = False
+            st.session_state.step = 0
+            st.session_state.score = 0
+            st.session_state.lives = 3
+            st.session_state.game_over = False
+            st.session_state.show_meme = False
+            st.session_state.answered = False
+            st.session_state.feedback = ""
+            st.rerun()
+        st.stop()
+
     if st.session_state.game_over:
         st.title("💀 GAME OVER")
         st.markdown("**Ты потерял все жизни. Мошенники победили...**")
@@ -207,7 +220,7 @@ else:
             st.rerun()
         st.stop()
     
-    if st.session_state.step >= len(st.session_state.cases):
+    if st.session_state.cases and st.session_state.step >= len(st.session_state.cases):
         st.balloons()
         st.title("🏆 ПОБЕДА!")
         st.markdown(f"**{st.session_state.user_name}**, ты прошёл все кейсы!")
@@ -237,7 +250,6 @@ else:
     case = st.session_state.cases[st.session_state.step]
     quest_id, description, case_image, meme_path, correct_action = case
     
-    # ========== ИНФОРМАЦИЯ ОБ АГЕНТЕ ==========
     col1, col2, col3 = st.columns([2, 2, 1])
     with col1:
         st.markdown(f"**👤 Агент:** {st.session_state.user_name}")
@@ -248,7 +260,6 @@ else:
     
     st.divider()
     
-    # ========== ФОТО И ТЕКСТ В ДВЕ КОЛОНКИ ==========
     col_left, col_right = st.columns([1.5, 2])
     
     with col_left:
@@ -269,17 +280,15 @@ else:
             st.markdown(clean_description)
         st.divider()
         
-        # ========== ПЛАШКА-ПОДСКАЗКА ==========
         st.markdown("""
         ---
         🔍 **Подсказка по решению:**
-        - 🟢 **Принять** — если паспорт действительный и не подделан (блики, плохое качество, скрин и.т.д — не важны)
-        - 🟡 **Недействительный** — если документ недействителен.
-        - 🔴 **В ЧС** — если документ явно поддельный (фотошоп, фальшивка и.т.д)
+        - 🟢 **Принять** — если паспорт действительный и не подделан (блики, плохое качество, скрин — не важны)
+        - 🟡 **Недействительный** — если документ недействителен (просрочен, не совпадают данные)
+        - 🔴 **В ЧС** — если документ явно поддельный (фотошоп, фальшивка)
         ---
         """)
         
-        # ========== ВЫБОР ДЕЙСТВИЯ ==========
         if not st.session_state.answered and not st.session_state.show_meme:
             action = st.radio(
                 "**Что делаем?**",
@@ -312,7 +321,6 @@ else:
                 if is_correct:
                     st.session_state.current_meme = meme_path
                 
-                # ========== СОХРАНЯЕМ РЕЗУЛЬТАТ ==========
                 player_id = get_or_create_player(st.session_state.user_name)
                 if player_id:
                     save_result(player_id, quest_id, user_action, is_correct)
@@ -322,7 +330,6 @@ else:
                 st.session_state.show_meme = True
                 st.rerun()
     
-    # ========== ПОКАЗ РЕЗУЛЬТАТА И МЕМА ==========
     if st.session_state.show_meme:
         st.markdown(st.session_state.feedback)
         
@@ -349,7 +356,6 @@ else:
             scroll_to_top()
             st.rerun()
     
-    # ========== ВЫХОД ==========
     if st.button("🚪 Выйти"):
         st.session_state.started = False
         st.session_state.step = 0
