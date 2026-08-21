@@ -3,7 +3,9 @@ import streamlit as st
 import os
 from PIL import Image, ImageOps
 
-# load_dotenv() — УДАЛЁН! Теперь читаем из st.secrets
+# ========== ОТЛАДКА: ПРОВЕРКА ПЕРЕМЕННЫХ (ПОТОМ УДАЛИ) ==========
+st.write("DB_HOST =", os.getenv('DB_HOST'))
+st.write("DB_USER =", os.getenv('DB_USER'))
 
 # ========== ФУНКЦИЯ ПОИСКА ФАЙЛА ==========
 def find_image_file(path):
@@ -35,15 +37,15 @@ def scroll_to_top():
     </script>
     """, unsafe_allow_html=True)
 
-# ========== ПОДКЛЮЧЕНИЕ К БД (ЧЕРЕЗ st.secrets) ==========
+# ========== ПОДКЛЮЧЕНИЕ К БД (через os.getenv) ==========
 def get_db_connection():
     try:
         return psycopg2.connect(
-            port=st.secrets['connections']['postgresql']['port'],
-            host=st.secrets['connections']['postgresql']['host'],
-            user=st.secrets['connections']['postgresql']['username'],
-            password=st.secrets['connections']['postgresql']['password'],
-            database=st.secrets['connections']['postgresql']['database']
+            port=os.getenv('DB_PORT'),
+            host=os.getenv('DB_HOST'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD'),
+            database=os.getenv('DB_DATABASE')
         )
     except Exception as e:
         st.error(f"❌ Ошибка подключения к БД: {e}")
